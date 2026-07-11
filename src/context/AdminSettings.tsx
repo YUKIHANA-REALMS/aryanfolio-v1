@@ -1,9 +1,8 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { visualEffects, EffectType } from '@/lib/effects';
 import { animations, AnimationKey } from '@/lib/animations';
 
 export type VisualEffect = EffectType;
-
 export type AnimationName = AnimationKey;
 
 export interface AdminSettings {
@@ -18,6 +17,8 @@ export interface AdminSettings {
   twitterUrl: string;
   youtubeUrl: string;
   discordUrl: string;
+  discordUsername: string;
+  discordMessage: string;
   email: string;
   heroTagline: string;
   heroTitle: string;
@@ -29,7 +30,7 @@ export interface AdminSettings {
   contactCta: string;
   buttons: { label: string; link: string; type: 'primary' | 'secondary' | 'ghost' }[];
   skills: { name: string; category: string; level: number }[];
-  projects: { name: string; year: string; description: string; tags: string[]; status: string; featured: boolean; liveLink: string; githubLink: string }[];
+  projects: { name: string; year: string; description: string; tags: string[]; status: string; featured: boolean; liveLink: string; githubLink: string; logoUrl: string }[];
   visualEffect: VisualEffect;
   glassmorphismIntensity: number;
   borderRadius: number;
@@ -61,6 +62,8 @@ const defaultSettings: AdminSettings = {
   twitterUrl: 'https://twitter.com/aryan',
   youtubeUrl: '',
   discordUrl: 'https://discord.gg/aerox',
+  discordUsername: 'indium.xyz',
+  discordMessage: 'Feel free to DM me! I am always happy to connect.',
   email: 'aryandw2010@gmail.com',
   heroTagline: "Hello, I'm Aryan, a full-stack developer and cloud DevOps engineer specializing in scalable digital solutions.",
   heroTitle: 'Aryan',
@@ -89,11 +92,11 @@ const defaultSettings: AdminSettings = {
     { name: 'Terraform', category: 'IaC', level: 75 }
   ],
   projects: [
-    { name: 'IndiCloud', year: '2025', description: 'Cloud infrastructure platform.', tags: ['Docker', 'Kubernetes', 'AWS'], status: 'production', featured: true, liveLink: 'https://indicloud.xyz', githubLink: 'https://github.com/YUKIHANA-REALMS' },
-    { name: 'DevOps Toolkit', year: '2025', description: 'Automation scripts and CI/CD pipelines.', tags: ['Python', 'Bash', 'GitHub Actions'], status: 'production', featured: true, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS' },
-    { name: 'CloudWatch Dashboard', year: '2025', description: 'Real-time monitoring dashboard.', tags: ['React', 'TypeScript', 'Grafana'], status: 'production', featured: true, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS' },
-    { name: 'InfraProvisioner', year: '2025', description: 'Automated infrastructure provisioning.', tags: ['Go', 'Terraform', 'AWS'], status: 'coming soon', featured: false, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS' },
-    { name: 'ContainerForge', year: '2025', description: 'Container optimization platform.', tags: ['Python', 'Docker', 'Trivy'], status: 'coming soon', featured: false, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS' }
+    { name: 'IndiCloud', year: '2025', description: 'Cloud infrastructure platform.', tags: ['Docker', 'Kubernetes', 'AWS'], status: 'production', featured: true, liveLink: 'https://indicloud.xyz', githubLink: 'https://github.com/YUKIHANA-REALMS', logoUrl: '' },
+    { name: 'DevOps Toolkit', year: '2025', description: 'Automation scripts and CI/CD pipelines.', tags: ['Python', 'Bash', 'GitHub Actions'], status: 'production', featured: true, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS', logoUrl: '' },
+    { name: 'CloudWatch Dashboard', year: '2025', description: 'Real-time monitoring dashboard.', tags: ['React', 'TypeScript', 'Grafana'], status: 'production', featured: true, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS', logoUrl: '' },
+    { name: 'InfraProvisioner', year: '2025', description: 'Automated infrastructure provisioning.', tags: ['Go', 'Terraform', 'AWS'], status: 'coming soon', featured: false, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS', logoUrl: '' },
+    { name: 'ContainerForge', year: '2025', description: 'Container optimization platform.', tags: ['Python', 'Docker', 'Trivy'], status: 'coming soon', featured: false, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS', logoUrl: '' }
   ],
   visualEffect: 'glassmorphism',
   glassmorphismIntensity: 20,
@@ -114,20 +117,22 @@ const defaultSettings: AdminSettings = {
   footerText: 'Built with passion'
 };
 
-// Build all effect CSS into one string
 const allEffectCSS = Object.values(visualEffects).map(e => e.css).join('\n');
-// Build all animation CSS into one string
 const allAnimationCSS = Object.values(animations).map(a => a.css).join('\n');
 
-const AdminSettingsContext = createContext<{
+interface AdminSettingsContextType {
   settings: AdminSettings;
   updateSettings: (updates: Partial<AdminSettings>) => void;
+  updateSettingsImmediate: (updates: Partial<AdminSettings>) => void;
   resetSettings: () => void;
   getEffectClass: () => string;
   getAnimationClasses: () => string;
-}>({
+}
+
+const AdminSettingsContext = createContext<AdminSettingsContextType>({
   settings: defaultSettings,
   updateSettings: () => {},
+  updateSettingsImmediate: () => {},
   resetSettings: () => {},
   getEffectClass: () => '',
   getAnimationClasses: () => ''
@@ -139,11 +144,40 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
   const [settings, setSettings] = useState<AdminSettings>(() => {
     try {
       const saved = localStorage.getItem('admin-settings');
-      return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...defaultSettings, ...parsed, projects: (parsed.projects || defaultSettings.projects).map((p: any) => ({ ...{ logoUrl: '', liveLink: '', githubLink: '' }, ...p })) };
+      }
+      return defaultSettings;
     } catch {
       return defaultSettings;
     }
   });
+
+  const pendingRef = useRef<Partial<AdminSettings> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushUpdates = useCallback(() => {
+    if (pendingRef.current) {
+      const updates = pendingRef.current;
+      pendingRef.current = null;
+      setSettings(prev => ({ ...prev, ...updates }));
+    }
+  }, []);
+
+  // Debounced updateSettings — batches rapid keystrokes
+  const updateSettings = useCallback((updates: Partial<AdminSettings>) => {
+    pendingRef.current = pendingRef.current ? { ...pendingRef.current, ...updates } : updates;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(flushUpdates, 300);
+  }, [flushUpdates]);
+
+  // Immediate update — for dropdowns, toggles, sliders, buttons
+  const updateSettingsImmediate = useCallback((updates: Partial<AdminSettings>) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    pendingRef.current = null;
+    setSettings(prev => ({ ...prev, ...updates }));
+  }, []);
 
   // Inject effect CSS + animation CSS into DOM
   useEffect(() => {
@@ -160,35 +194,28 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
   useEffect(() => {
     const effectClass = visualEffects[settings.visualEffect]?.class || '';
     
-    // Remove all effect classes from body
     document.body.classList.remove(
       'effect-glassmorphism', 'effect-neumorphism', 'effect-claymorphism',
       'effect-neobrutalism', 'effect-auroramorphism', 'effect-skeuomorphism'
     );
     
-    // Add the selected effect class
     if (effectClass) {
       document.body.classList.add(effectClass);
     }
 
-    // Apply glassmorphism intensity
     document.documentElement.style.setProperty('--glass-blur', `${settings.glassmorphismIntensity}px`);
     document.documentElement.style.setProperty('--border-radius', `${settings.borderRadius}px`);
-
-    // Apply theme colors
     document.documentElement.style.setProperty('--primary-custom', settings.primaryColor);
     document.documentElement.style.setProperty('--accent-custom', settings.accentColor);
     document.documentElement.style.setProperty('--bg-custom', settings.backgroundColor);
     document.documentElement.style.setProperty('--text-custom', settings.textColor);
     document.documentElement.style.setProperty('--radius-custom', `${settings.borderRadius}px`);
 
-    // Apply colors to body
     document.body.style.backgroundColor = settings.backgroundColor;
     document.body.style.color = settings.textColor;
 
     document.title = settings.siteTitle || defaultSettings.siteTitle;
 
-    // Apply favicon
     if (settings.favicon) {
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
       if (!link) {
@@ -199,7 +226,6 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
       link.href = settings.favicon;
     }
 
-    // Apply logo (update all img elements with data-admin-logo attribute)
     if (settings.logo) {
       document.querySelectorAll('[data-admin-logo]').forEach((img) => {
         (img as HTMLImageElement).src = settings.logo;
@@ -212,11 +238,9 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
     localStorage.setItem('admin-settings', JSON.stringify(settings));
   }, [settings]);
 
-  const updateSettings = (updates: Partial<AdminSettings>) => {
-    setSettings(prev => ({ ...prev, ...updates }));
-  };
-
   const resetSettings = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    pendingRef.current = null;
     setSettings(defaultSettings);
     localStorage.removeItem('admin-settings');
   };
@@ -233,7 +257,7 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
   };
 
   return (
-    <AdminSettingsContext.Provider value={{ settings, updateSettings, resetSettings, getEffectClass, getAnimationClasses }}>
+    <AdminSettingsContext.Provider value={{ settings, updateSettings, updateSettingsImmediate, resetSettings, getEffectClass, getAnimationClasses }}>
       {children}
     </AdminSettingsContext.Provider>
   );

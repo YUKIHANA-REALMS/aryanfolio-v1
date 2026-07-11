@@ -22,7 +22,7 @@ import { visualEffects, EffectType } from "@/lib/effects";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { settings, updateSettings, resetSettings } = useAdminSettings();
+  const { settings, updateSettings, updateSettingsImmediate, resetSettings } = useAdminSettings();
   const [activeTab, setActiveTab] = useState("branding");
   const [saveMessage, setSaveMessage] = useState("");
 
@@ -54,11 +54,11 @@ const AdminDashboard = () => {
     const updated = current.includes(anim)
       ? current.filter(a => a !== anim)
       : [...current, anim];
-    updateSettings({ enabledAnimations: updated as AnimationName[] });
+    updateSettingsImmediate({ enabledAnimations: updated as AnimationName[] });
   };
 
   const addSkill = () => {
-    updateSettings({
+    updateSettingsImmediate({
       skills: [...settings.skills, { name: "New Skill", category: "Other", level: 50 }]
     });
   };
@@ -66,18 +66,18 @@ const AdminDashboard = () => {
   const updateSkill = (index: number, updates: Partial<typeof settings.skills[0]>) => {
     const newSkills = [...settings.skills];
     newSkills[index] = { ...newSkills[index], ...updates };
-    updateSettings({ skills: newSkills });
+    updateSettingsImmediate({ skills: newSkills });
   };
 
   const removeSkill = (index: number) => {
-    updateSettings({ skills: settings.skills.filter((_, i) => i !== index) });
+    updateSettingsImmediate({ skills: settings.skills.filter((_, i) => i !== index) });
   };
 
   const addProject = () => {
-    updateSettings({
+    updateSettingsImmediate({
       projects: [...settings.projects, {
         name: "New Project", year: "2025", description: "Project description",
-        tags: ["Tag1"], status: "development", featured: false, liveLink: "", githubLink: ""
+        tags: ["Tag1"], status: "development", featured: false, liveLink: "", githubLink: "", logoUrl: ""
       }]
     });
   };
@@ -85,15 +85,15 @@ const AdminDashboard = () => {
   const updateProject = (index: number, updates: Partial<typeof settings.projects[0]>) => {
     const newProjects = [...settings.projects];
     newProjects[index] = { ...newProjects[index], ...updates };
-    updateSettings({ projects: newProjects });
+    updateSettingsImmediate({ projects: newProjects });
   };
 
   const removeProject = (index: number) => {
-    updateSettings({ projects: settings.projects.filter((_, i) => i !== index) });
+    updateSettingsImmediate({ projects: settings.projects.filter((_, i) => i !== index) });
   };
 
   const addButton = () => {
-    updateSettings({
+    updateSettingsImmediate({
       buttons: [...settings.buttons, { label: "New Button", link: "#", type: "secondary" }]
     });
   };
@@ -101,25 +101,25 @@ const AdminDashboard = () => {
   const updateButton = (index: number, updates: Partial<typeof settings.buttons[0]>) => {
     const newButtons = [...settings.buttons];
     newButtons[index] = { ...newButtons[index], ...updates };
-    updateSettings({ buttons: newButtons });
+    updateSettingsImmediate({ buttons: newButtons });
   };
 
   const removeButton = (index: number) => {
-    updateSettings({ buttons: settings.buttons.filter((_, i) => i !== index) });
+    updateSettingsImmediate({ buttons: settings.buttons.filter((_, i) => i !== index) });
   };
 
   const addParagraph = () => {
-    updateSettings({ aboutParagraphs: [...settings.aboutParagraphs, "New paragraph text"] });
+    updateSettingsImmediate({ aboutParagraphs: [...settings.aboutParagraphs, "New paragraph text"] });
   };
 
   const updateParagraph = (index: number, value: string) => {
     const newParagraphs = [...settings.aboutParagraphs];
     newParagraphs[index] = value;
-    updateSettings({ aboutParagraphs: newParagraphs });
+    updateSettingsImmediate({ aboutParagraphs: newParagraphs });
   };
 
   const removeParagraph = (index: number) => {
-    updateSettings({ aboutParagraphs: settings.aboutParagraphs.filter((_, i) => i !== index) });
+    updateSettingsImmediate({ aboutParagraphs: settings.aboutParagraphs.filter((_, i) => i !== index) });
   };
 
   const InputField = ({ label, value, onChange, placeholder, type = "text" }: {
@@ -296,7 +296,9 @@ const AdminDashboard = () => {
               <InputField label="LinkedIn" value={settings.linkedinUrl} onChange={v => updateSettings({ linkedinUrl: v })} />
               <InputField label="Twitter" value={settings.twitterUrl} onChange={v => updateSettings({ twitterUrl: v })} />
               <InputField label="YouTube" value={settings.youtubeUrl} onChange={v => updateSettings({ youtubeUrl: v })} />
-              <InputField label="Discord" value={settings.discordUrl} onChange={v => updateSettings({ discordUrl: v })} />
+              <InputField label="Discord Invite URL" value={settings.discordUrl} onChange={v => updateSettings({ discordUrl: v })} />
+              <InputField label="Discord Username" value={settings.discordUsername} onChange={v => updateSettings({ discordUsername: v })} />
+              <InputField label="Discord Popup Message" value={settings.discordMessage} onChange={v => updateSettings({ discordMessage: v })} />
               <InputField label="Email" value={settings.email} onChange={v => updateSettings({ email: v })} />
             </SectionCard>
           </TabsContent>
@@ -505,6 +507,12 @@ const AdminDashboard = () => {
                       placeholder="GitHub URL"
                     />
                   </div>
+                  <Input
+                    value={project.logoUrl || ''}
+                    onChange={(e) => updateProject(i, { logoUrl: e.target.value })}
+                    className="bg-white/5 border-white/10 text-white text-sm"
+                    placeholder="Logo URL (optional)"
+                  />
                 </Card>
               ))}
             </SectionCard>
@@ -555,7 +563,7 @@ const AdminDashboard = () => {
                         </div>
                         <Switch
                           checked={settings[key as keyof typeof settings] as boolean}
-                          onCheckedChange={(v) => updateSettings({ [key]: v })}
+                          onCheckedChange={(v) => updateSettingsImmediate({ [key]: v })}
                         />
                       </div>
                     ))}
@@ -584,7 +592,7 @@ const AdminDashboard = () => {
                       return (
                         <button
                           key={key}
-                          onClick={() => updateSettings({ visualEffect: key })}
+                          onClick={() => updateSettingsImmediate({ visualEffect: key })}
                           className={`p-4 rounded-xl border text-left transition-all ${isSelected ? "bg-white/10 border-white/30" : "bg-white/[0.02] border-white/5 hover:border-white/10"}`}
                         >
                           <div className="flex items-center justify-between mb-1">
@@ -604,7 +612,7 @@ const AdminDashboard = () => {
                       <Label className="text-white/70 text-sm">Blur Intensity: {settings.glassmorphismIntensity}px</Label>
                       <Slider
                         value={[settings.glassmorphismIntensity]}
-                        onValueChange={([v]) => updateSettings({ glassmorphismIntensity: v })}
+                        onValueChange={([v]) => updateSettingsImmediate({ glassmorphismIntensity: v })}
                         min={5}
                         max={40}
                         step={1}
@@ -614,7 +622,7 @@ const AdminDashboard = () => {
                       <Label className="text-white/70 text-sm">Border Radius: {settings.borderRadius}px</Label>
                       <Slider
                         value={[settings.borderRadius]}
-                        onValueChange={([v]) => updateSettings({ borderRadius: v })}
+                        onValueChange={([v]) => updateSettingsImmediate({ borderRadius: v })}
                         min={0}
                         max={32}
                         step={1}
@@ -647,7 +655,7 @@ const AdminDashboard = () => {
                     <input
                       type="color"
                       value={settings[key as keyof typeof settings] as string}
-                      onChange={(e) => updateSettings({ [key]: e.target.value })}
+                      onChange={(e) => updateSettingsImmediate({ [key]: e.target.value })}
                       className="w-10 h-10 rounded cursor-pointer bg-transparent border border-white/10"
                     />
                     <div>
@@ -677,7 +685,7 @@ const AdminDashboard = () => {
                     </div>
                     <Switch
                       checked={settings[key as keyof typeof settings] as boolean}
-                      onCheckedChange={(v) => updateSettings({ [key]: v })}
+                          onCheckedChange={(v) => updateSettingsImmediate({ [key]: v })}
                     />
                   </div>
                 ))}
@@ -693,7 +701,7 @@ const AdminDashboard = () => {
                       key={style}
                       variant={settings.headerStyle === style ? "default" : "outline"}
                       size="sm"
-                      onClick={() => updateSettings({ headerStyle: style })}
+                      onClick={() => updateSettingsImmediate({ headerStyle: style })}
                       className={settings.headerStyle === style ? "bg-white/20 text-white" : "premium-button"}
                     >
                       {style}
