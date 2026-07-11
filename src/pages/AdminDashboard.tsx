@@ -14,7 +14,7 @@ import {
   ArrowLeft, Settings, Palette, Type, Link2, Sparkles, Image,
   Layout, Save, RotateCcw, LogOut, Plus, Trash2, Eye, Layers,
   Zap, MousePointer, Monitor, Globe, FileText, Star, Box,
-  GripVertical, ChevronDown, ChevronUp
+  GripVertical, ChevronDown, ChevronUp, Users
 } from "lucide-react";
 import StarBorder from "@/components/StarBorder";
 import { animations, AnimationKey } from "@/lib/animations";
@@ -271,6 +271,7 @@ const AdminDashboard = () => {
               { value: "projects", icon: Box, label: "Projects" },
               { value: "animations", icon: Sparkles, label: "Animations" },
               { value: "effects", icon: Layers, label: "Effects" },
+              { value: "network", icon: Users, label: "Network" },
               { value: "theme", icon: Palette, label: "Theme" },
               { value: "layout", icon: Layout, label: "Layout" },
             ].map(({ value, icon: Icon, label }) => (
@@ -638,6 +639,124 @@ const AdminDashboard = () => {
                 </SectionCard>
               </div>
             </div>
+          </TabsContent>
+
+          {/* ═══ NETWORK ═══ */}
+          <TabsContent value="network" className="space-y-4">
+            <SectionCard title="Network Page" icon={Users}>
+              <InputField label="Page Title" value={settings.networkTitle} onChange={v => updateSettings({ networkTitle: v })} />
+              <div className="space-y-2">
+                <Label className="text-white/70 text-sm">Page Description</Label>
+                <Textarea
+                  value={settings.networkDescription}
+                  onChange={(e) => updateSettings({ networkDescription: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white min-h-[80px]"
+                />
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Friends / Connections" icon={Users}>
+              <div className="flex justify-end mb-2">
+                <Button variant="outline" size="sm" onClick={() => updateSettingsImmediate({
+                  friends: [...settings.friends, { name: 'New Friend', title: 'Role', category: 'Friends', skills: ['Skill1'], status: 'Available', discord: 'username', discordUserId: '' }]
+                })} className="premium-button">
+                  <Plus className="w-3 h-3 mr-1" /> Add Friend
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {settings.friends.map((friend, i) => (
+                  <Card key={i} className="bg-white/[0.02] border-white/5 p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="grid grid-cols-2 gap-3 flex-1">
+                        <Input
+                          value={friend.name}
+                          onChange={(e) => {
+                            const newFriends = [...settings.friends];
+                            newFriends[i] = { ...newFriends[i], name: e.target.value };
+                            updateSettingsImmediate({ friends: newFriends });
+                          }}
+                          className="bg-white/5 border-white/10 text-white text-sm"
+                          placeholder="Name"
+                        />
+                        <Input
+                          value={friend.title}
+                          onChange={(e) => {
+                            const newFriends = [...settings.friends];
+                            newFriends[i] = { ...newFriends[i], title: e.target.value };
+                            updateSettingsImmediate({ friends: newFriends });
+                          }}
+                          className="bg-white/5 border-white/10 text-white text-sm"
+                          placeholder="Title / Role"
+                        />
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => updateSettingsImmediate({
+                        friends: settings.friends.filter((_, j) => j !== i)
+                      })} className="premium-button ml-2 shrink-0">
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        value={friend.discord}
+                        onChange={(e) => {
+                          const newFriends = [...settings.friends];
+                          newFriends[i] = { ...newFriends[i], discord: e.target.value };
+                          updateSettingsImmediate({ friends: newFriends });
+                        }}
+                        className="bg-white/5 border-white/10 text-white text-sm"
+                        placeholder="Discord Username"
+                      />
+                      <Input
+                        value={friend.discordUserId}
+                        onChange={(e) => {
+                          const newFriends = [...settings.friends];
+                          newFriends[i] = { ...newFriends[i], discordUserId: e.target.value };
+                          updateSettingsImmediate({ friends: newFriends });
+                        }}
+                        className="bg-white/5 border-white/10 text-white text-sm"
+                        placeholder="Discord User ID (for avatar)"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <Input
+                        value={friend.category}
+                        onChange={(e) => {
+                          const newFriends = [...settings.friends];
+                          newFriends[i] = { ...newFriends[i], category: e.target.value };
+                          updateSettingsImmediate({ friends: newFriends });
+                        }}
+                        className="bg-white/5 border-white/10 text-white text-sm"
+                        placeholder="Category"
+                      />
+                      <Input
+                        value={friend.skills.join(', ')}
+                        onChange={(e) => {
+                          const newFriends = [...settings.friends];
+                          newFriends[i] = { ...newFriends[i], skills: e.target.value.split(',').map(s => s.trim()) };
+                          updateSettingsImmediate({ friends: newFriends });
+                        }}
+                        className="bg-white/5 border-white/10 text-white text-sm"
+                        placeholder="Skills (comma separated)"
+                      />
+                      <select
+                        value={friend.status}
+                        onChange={(e) => {
+                          const newFriends = [...settings.friends];
+                          newFriends[i] = { ...newFriends[i], status: e.target.value };
+                          updateSettingsImmediate({ friends: newFriends });
+                        }}
+                        className="bg-white/5 border border-white/10 text-white text-xs rounded px-2 py-1"
+                      >
+                        <option value="Available">Available</option>
+                        <option value="Busy">Busy</option>
+                        <option value="Offline">Offline</option>
+                        <option value="Idle">Idle</option>
+                      </select>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </SectionCard>
           </TabsContent>
 
           {/* ═══ THEME ═══ */}

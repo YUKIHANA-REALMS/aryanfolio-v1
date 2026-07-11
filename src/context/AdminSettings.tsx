@@ -31,6 +31,9 @@ export interface AdminSettings {
   buttons: { label: string; link: string; type: 'primary' | 'secondary' | 'ghost' }[];
   skills: { name: string; category: string; level: number }[];
   projects: { name: string; year: string; description: string; tags: string[]; status: string; featured: boolean; liveLink: string; githubLink: string; logoUrl: string }[];
+  networkTitle: string;
+  networkDescription: string;
+  friends: { name: string; title: string; category: string; skills: string[]; status: string; discord: string; discordUserId: string }[];
   visualEffect: VisualEffect;
   glassmorphismIntensity: number;
   borderRadius: number;
@@ -97,6 +100,19 @@ const defaultSettings: AdminSettings = {
     { name: 'CloudWatch Dashboard', year: '2025', description: 'Real-time monitoring dashboard.', tags: ['React', 'TypeScript', 'Grafana'], status: 'production', featured: true, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS', logoUrl: '' },
     { name: 'InfraProvisioner', year: '2025', description: 'Automated infrastructure provisioning.', tags: ['Go', 'Terraform', 'AWS'], status: 'coming soon', featured: false, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS', logoUrl: '' },
     { name: 'ContainerForge', year: '2025', description: 'Container optimization platform.', tags: ['Python', 'Docker', 'Trivy'], status: 'coming soon', featured: false, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS', logoUrl: '' }
+  ],
+  networkTitle: 'My Network',
+  networkDescription: 'Welcome to my professional network! These are the incredible individuals I\'ve had the privilege to work, collaborate, and build friendships with. From talented developers and designers to innovative entrepreneurs and creative minds - each person here has contributed something valuable to my journey in tech.',
+  friends: [
+    { name: 'Azuren', title: 'Discord Server Designer', category: 'Best Friends', skills: ['Management', 'Aesthetic', 'Embeds'], status: 'Available', discord: 'azuren.dev', discordUserId: '' },
+    { name: 'ZenpaiZombie', title: 'Founder @ StrelixCloud', category: 'Best Friends', skills: ['Proxmox', 'KVM', 'Virtualization'], status: 'Busy', discord: 'zenpaizombie', discordUserId: '' },
+    { name: 'Nkash', title: 'VPS Specialist', category: 'Bros', skills: ['Networking', 'KVM', 'Docker'], status: 'Offline', discord: 'nkash.tech', discordUserId: '' },
+    { name: 'Exo1tap', title: 'Minecraft Developer', category: 'Bros', skills: ['Java', 'Minecraft', 'Mods'], status: 'Available', discord: 'exo1tap', discordUserId: '' },
+    { name: 'Spicy mango', title: 'Minecraft Server Developer', category: 'Bros', skills: ['Java', 'PaperMC'], status: 'Busy', discord: 'spicymango', discordUserId: '' },
+    { name: 'Aryan', title: 'Full-Stack Developer & Cloud DevOps', category: 'Special Persons', skills: ['React', 'Node.js', 'Docker', 'AWS'], status: 'Busy', discord: 'aryan.dev', discordUserId: '' },
+    { name: 'Miorin', title: 'Security Researcher', category: 'Special Persons', skills: ['Python', 'Machine Learning', 'TensorFlow'], status: 'Available', discord: 'miorin.ai', discordUserId: '' },
+    { name: 'Alya', title: 'Graphic Designer', category: 'Friends', skills: ['Photoshop', 'Illustrator', 'UI Design'], status: 'Busy', discord: 'alya.design', discordUserId: '' },
+    { name: 'Leo', title: 'Discord Bot Developer', category: 'Friends', skills: ['Node.js', 'JavaScript', 'Python'], status: 'Idle', discord: 'leo.codes', discordUserId: '' },
   ],
   visualEffect: 'glassmorphism',
   glassmorphismIntensity: 20,
