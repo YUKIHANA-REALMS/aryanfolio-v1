@@ -187,6 +187,24 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
     document.body.style.color = settings.textColor;
 
     document.title = settings.siteTitle || defaultSettings.siteTitle;
+
+    // Apply favicon
+    if (settings.favicon) {
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = settings.favicon;
+    }
+
+    // Apply logo (update all img elements with data-admin-logo attribute)
+    if (settings.logo) {
+      document.querySelectorAll('[data-admin-logo]').forEach((img) => {
+        (img as HTMLImageElement).src = settings.logo;
+      });
+    }
   }, [settings]);
 
   // Save to localStorage

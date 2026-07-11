@@ -70,6 +70,7 @@ export const Hero = () => {
                   <img 
                     src={pixelAvatar} 
                     alt={`${personal.name}'s avatar`} 
+                    data-admin-logo
                     className="relative w-28 h-28 rounded-full border-2 border-white/20 group-hover:border-white/40 transition-all duration-700 transform group-hover:scale-105 pixel-art shadow-2xl shadow-white/10"
                   />
                   
