@@ -3,8 +3,8 @@ import { AnimatedSection } from "./AnimatedSection";
 import { Badge } from "./ui/badge";
 import { ExternalLink, Github, Clock, Star } from "lucide-react";
 import { Button } from "./ui/button";
-import { portfolioConfig } from "../config/portfolio.config";
 import { useEffectClasses } from "./TerminalWindow";
+import { useAdminSettings } from "../context/AdminSettings";
 
 const statusIcons = {
   production: Star,
@@ -21,7 +21,16 @@ const statusColors = {
 };
 
 export const Projects = () => {
-  const { projects } = portfolioConfig;
+  const { settings } = useAdminSettings();
+  const projects = settings.projects.map(p => ({
+    name: p.name,
+    year: p.year,
+    description: p.description,
+    tags: p.tags,
+    status: p.status,
+    featured: p.featured,
+    links: { live: p.liveLink, github: p.githubLink }
+  }));
   const { glassClass } = useEffectClasses();
 
   return (
@@ -115,7 +124,7 @@ export const Projects = () => {
                                 <span className="relative z-10 font-medium">Visit Live</span>
                               </Button>
                             )}
-                            {portfolioConfig.features.showCodeButtons && project.links.github && (
+                            {project.links.github && (
                               <Button 
                                 variant="outline" 
                                 size="default"

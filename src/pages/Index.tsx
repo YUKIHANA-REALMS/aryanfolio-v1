@@ -5,18 +5,18 @@ import { Projects } from "../components/Projects";
 import { Contact } from "../components/Contact";
 import { ScrollProgress } from "../components/ScrollProgress";
 import { ParticleField } from "../components/ParticleField";
-import { portfolioConfig } from "../config/portfolio.config";
+import { useAdminSettings } from "../context/AdminSettings";
 
 const Index = () => {
-  const { features } = portfolioConfig;
+  const { settings } = useAdminSettings();
   
   return (
     <div className="min-h-screen bg-background relative">
       {/* Scroll Progress Indicator */}
-      {features.particles && <ScrollProgress />}
+      {settings.showScrollProgress && <ScrollProgress />}
       
       {/* Particle Background Effect */}
-      {features.particles && <ParticleField />}
+      {settings.showParticles && <ParticleField />}
       
       {/* Main Content */}
       <main className="relative z-10">

@@ -3,16 +3,19 @@ import { TerminalWindow } from "./TerminalWindow";
 import { AnimatedSection } from "./AnimatedSection";
 import { Button } from "./ui/button";
 import { Github, Mail, FileText, Download, Calculator, Users } from "lucide-react";
-import { portfolioConfig } from "../config/portfolio.config";
 import pixelAvatar from "../assets/aegis.png";
 import { Link } from "react-router-dom";
 import { useEffectClasses } from "./TerminalWindow";
+import { useAdminSettings } from "../context/AdminSettings";
 
 export const Hero = () => {
   const [displayText, setDisplayText] = useState("");
-  const { personal, social, theme } = portfolioConfig;
+  const { settings } = useAdminSettings();
   const { glassClass } = useEffectClasses();
-  
+
+  const personal = { name: settings.heroTitle || settings.siteName, title: "Full-Stack Developer & Cloud DevOps Engineer", tagline: settings.heroTagline, email: settings.email };
+  const social = { github: settings.githubUrl };
+
   useEffect(() => {
     let i = 0;
     const timer = setInterval(() => {
@@ -22,10 +25,10 @@ export const Hero = () => {
       } else {
         clearInterval(timer);
       }
-    }, theme.animations.typingSpeed);
+    }, 45);
     
     return () => clearInterval(timer);
-  }, [personal.tagline, theme.animations.typingSpeed]);
+  }, [personal.tagline]);
 
   const scrollToSection = useCallback((sectionId: string) => {
     const element = document.getElementById(sectionId);

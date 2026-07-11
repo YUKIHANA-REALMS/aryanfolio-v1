@@ -1,11 +1,19 @@
 import { TerminalWindow } from "./TerminalWindow";
 import { AnimatedSection } from "./AnimatedSection";
-import { portfolioConfig } from "../config/portfolio.config";
 import { useEffectClasses } from "./TerminalWindow";
+import { useAdminSettings } from "../context/AdminSettings";
 
 export const About = () => {
-  const { content } = portfolioConfig;
+  const { settings } = useAdminSettings();
   const { glassClass } = useEffectClasses();
+
+  const content = {
+    about: {
+      title: settings.aboutTitle,
+      paragraphs: settings.aboutParagraphs,
+      availability: settings.aboutAvailability
+    }
+  };
   
   return (
     <section id="about" className="py-16 px-4">

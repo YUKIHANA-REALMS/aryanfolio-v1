@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAdminSettings, AnimationName, VisualEffect } from "@/context/AdminSettings";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,59 @@ import {
 import StarBorder from "@/components/StarBorder";
 import { animations, AnimationKey } from "@/lib/animations";
 import { visualEffects, EffectType } from "@/lib/effects";
+
+const InputField = ({ label, value, onChange, placeholder, type = "text" }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
+}) => {
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [localValue, setLocalValue] = useState(value);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      onChange(newValue);
+    }, 300);
+  }, [onChange]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-white/70 text-sm">{label}</Label>
+      <Input
+        type={type}
+        value={localValue}
+        onChange={handleChange}
+        placeholder={placeholder}
+        className="bg-white/5 border-white/10 text-white focus:border-white/30 focus:ring-1 focus:ring-white/20"
+      />
+    </div>
+  );
+};
+
+const SectionCard = ({ title, icon: Icon, children }: {
+  title: string; icon: React.ElementType; children: React.ReactNode;
+}) => (
+  <Card className="bg-white/[0.02] border-white/5">
+    <CardHeader className="pb-3">
+      <CardTitle className="text-white/90 text-base flex items-center gap-2">
+        <Icon className="w-4 h-4" />
+        {title}
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-4">{children}</CardContent>
+  </Card>
+);
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -121,35 +174,6 @@ const AdminDashboard = () => {
   const removeParagraph = (index: number) => {
     updateSettingsImmediate({ aboutParagraphs: settings.aboutParagraphs.filter((_, i) => i !== index) });
   };
-
-  const InputField = ({ label, value, onChange, placeholder, type = "text" }: {
-    label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
-  }) => (
-    <div className="space-y-2">
-      <Label className="text-white/70 text-sm">{label}</Label>
-      <Input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="bg-white/5 border-white/10 text-white focus:border-white/30 focus:ring-1 focus:ring-white/20"
-      />
-    </div>
-  );
-
-  const SectionCard = ({ title, icon: Icon, children }: {
-    title: string; icon: React.ElementType; children: React.ReactNode;
-  }) => (
-    <Card className="bg-white/[0.02] border-white/5">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-white/90 text-base flex items-center gap-2">
-          <Icon className="w-4 h-4" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">{children}</CardContent>
-    </Card>
-  );
 
   // Preview card for Effects tab - shows the current effect in real-time
   const EffectsPreview = () => {

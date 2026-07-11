@@ -3,13 +3,23 @@ import { TerminalWindow, useEffectClasses } from "./TerminalWindow";
 import { AnimatedSection } from "./AnimatedSection";
 import { Mail, Github, MessageCircle } from "lucide-react";
 import { Button } from "./ui/button";
-import { portfolioConfig } from "../config/portfolio.config";
 import { DiscordModal } from "./DiscordModal";
+import { useAdminSettings } from "../context/AdminSettings";
 
 export const Contact = () => {
-  const { content, social, personal } = portfolioConfig;
+  const { settings } = useAdminSettings();
   const { glassClass } = useEffectClasses();
   const [discordOpen, setDiscordOpen] = useState(false);
+
+  const content = {
+    contact: {
+      title: settings.contactTitle,
+      description: settings.contactDescription,
+      cta: settings.contactCta
+    }
+  };
+  const social = { github: settings.githubUrl };
+  const personal = { email: settings.email };
 
   return (
     <>

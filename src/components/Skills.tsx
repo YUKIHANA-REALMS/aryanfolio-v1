@@ -1,7 +1,7 @@
 import { TerminalWindow } from "./TerminalWindow";
 import { AnimatedSection } from "./AnimatedSection";
-import { portfolioConfig } from "../config/portfolio.config";
 import { useEffectClasses } from "./TerminalWindow";
+import { useAdminSettings } from "../context/AdminSettings";
 import { 
   Code, 
   Server, 
@@ -24,7 +24,8 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 export const Skills = () => {
-  const { skills: skillsData } = portfolioConfig;
+  const { settings } = useAdminSettings();
+  const skillsData = settings.skills;
   const { glassClass } = useEffectClasses();
   
   return (
