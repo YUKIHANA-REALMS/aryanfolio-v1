@@ -142,6 +142,45 @@ const defaultSettings: AdminSettings = {
 const allEffectCSS = Object.values(visualEffects).map(e => e.css).join('\n');
 const allAnimationCSS = Object.values(animations).map(a => a.css).join('\n');
 
+function mergeSettings(saved: Record<string, unknown>, defaults: AdminSettings): AdminSettings {
+  const merged = { ...defaults, ...saved };
+  if (saved.projects && Array.isArray(saved.projects)) {
+    merged.projects = saved.projects.map((p: Record<string, unknown>) => ({
+      logoUrl: '', liveLink: '', githubLink: '',
+      ...p,
+    }));
+  }
+  return merged;
+}
+
+async function fetchSettingsFromAPI(): Promise<AdminSettings | null> {
+  try {
+    const res = await fetch('/api/settings');
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.settings) return data.settings;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveSettingsToAPI(settings: AdminSettings, token: string): Promise<boolean> {
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ settings }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 interface AdminSettingsContextType {
   settings: AdminSettings;
   updateSettings: (updates: Partial<AdminSettings>) => void;
@@ -149,6 +188,11 @@ interface AdminSettingsContextType {
   resetSettings: () => void;
   getEffectClass: () => string;
   getAnimationClasses: () => string;
+  authState: 'loading' | 'authenticated' | 'unauthenticated';
+  isAdmin: boolean;
+  adminLogin: (password: string) => Promise<{ success: boolean; error?: string; token?: string }>;
+  adminSetup: (password: string) => Promise<{ success: boolean; error?: string; token?: string }>;
+  adminLogout: () => void;
 }
 
 const AdminSettingsContext = createContext<AdminSettingsContextType>({
@@ -157,27 +201,72 @@ const AdminSettingsContext = createContext<AdminSettingsContextType>({
   updateSettingsImmediate: () => {},
   resetSettings: () => {},
   getEffectClass: () => '',
-  getAnimationClasses: () => ''
+  getAnimationClasses: () => '',
+  authState: 'loading',
+  isAdmin: false,
+  adminLogin: async () => ({ success: false }),
+  adminSetup: async () => ({ success: false }),
+  adminLogout: () => {},
 });
 
 export const useAdminSettings = () => useContext(AdminSettingsContext);
 
 export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => {
-  const [settings, setSettings] = useState<AdminSettings>(() => {
-    try {
-      const saved = localStorage.getItem('admin-settings');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return { ...defaultSettings, ...parsed, projects: (parsed.projects || defaultSettings.projects).map((p: Record<string, unknown>) => ({ ...{ logoUrl: '', liveLink: '', githubLink: '', importedGithubIds: [] as number[] }, ...p })) };
-      }
-      return defaultSettings;
-    } catch {
-      return defaultSettings;
-    }
-  });
+  const [settings, setSettings] = useState<AdminSettings>(defaultSettings);
+  const [authToken, setAuthToken] = useState<string | null>(() => sessionStorage.getItem('admin-token'));
+  const [authState, setAuthState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const pendingRef = useRef<Partial<AdminSettings> | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('admin-token');
+    if (token) {
+      try {
+        const decoded = atob(token);
+        const [, , ts] = decoded.split('|');
+        const age = Date.now() - parseInt(ts, 10);
+        if (age > 24 * 60 * 60 * 1000) {
+          sessionStorage.removeItem('admin-token');
+          setAuthToken(null);
+          setAuthState('unauthenticated');
+        } else {
+          setAuthToken(token);
+          setAuthState('authenticated');
+        }
+      } catch {
+        sessionStorage.removeItem('admin-token');
+        setAuthToken(null);
+        setAuthState('unauthenticated');
+      }
+    } else {
+      setAuthState('unauthenticated');
+    }
+  }, []);
+
+  // Load settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      const apiSettings = await fetchSettingsFromAPI();
+      if (apiSettings) {
+        setSettings(apiSettings);
+      } else {
+        try {
+          const saved = localStorage.getItem('admin-settings');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            setSettings(mergeSettings(parsed, defaultSettings));
+          }
+        } catch {
+          // use defaults
+        }
+      }
+      setIsInitialLoad(false);
+    };
+    loadSettings();
+  }, []);
 
   const flushUpdates = useCallback(() => {
     if (pendingRef.current) {
@@ -187,19 +276,31 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
     }
   }, []);
 
-  // Debounced updateSettings — batches rapid keystrokes
   const updateSettings = useCallback((updates: Partial<AdminSettings>) => {
     pendingRef.current = pendingRef.current ? { ...pendingRef.current, ...updates } : updates;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(flushUpdates, 300);
   }, [flushUpdates]);
 
-  // Immediate update — for dropdowns, toggles, sliders, buttons
   const updateSettingsImmediate = useCallback((updates: Partial<AdminSettings>) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     pendingRef.current = null;
     setSettings(prev => ({ ...prev, ...updates }));
   }, []);
+
+  // Save to localStorage + API
+  useEffect(() => {
+    if (isInitialLoad) return;
+
+    localStorage.setItem('admin-settings', JSON.stringify(settings));
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      if (authToken) {
+        saveSettingsToAPI(settings, authToken);
+      }
+    }, 1000);
+  }, [settings, authToken, isInitialLoad]);
 
   // Inject effect CSS + animation CSS into DOM
   useEffect(() => {
@@ -215,12 +316,12 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
   // Apply effect class + CSS variables to body
   useEffect(() => {
     const effectClass = visualEffects[settings.visualEffect]?.class || '';
-    
+
     document.body.classList.remove(
       'effect-glassmorphism', 'effect-neumorphism', 'effect-claymorphism',
       'effect-neobrutalism', 'effect-auroramorphism', 'effect-skeuomorphism'
     );
-    
+
     if (effectClass) {
       document.body.classList.add(effectClass);
     }
@@ -255,17 +356,15 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
     }
   }, [settings]);
 
-  // Save to localStorage
-  useEffect(() => {
-    localStorage.setItem('admin-settings', JSON.stringify(settings));
-  }, [settings]);
-
   const resetSettings = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     pendingRef.current = null;
     setSettings(defaultSettings);
     localStorage.removeItem('admin-settings');
-  }, []);
+    if (authToken) {
+      saveSettingsToAPI(defaultSettings, authToken);
+    }
+  }, [authToken]);
 
   const getEffectClass = useCallback((): string => {
     return visualEffects[settings.visualEffect]?.class || '';
@@ -278,8 +377,66 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
       .join(' ');
   }, [settings.enabledAnimations]);
 
+  const adminLogin = useCallback(async (password: string) => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', password }),
+      });
+      const data = await res.json();
+      if (data.success && data.token) {
+        sessionStorage.setItem('admin-token', data.token);
+        setAuthToken(data.token);
+        setAuthState('authenticated');
+        return { success: true, token: data.token };
+      }
+      return { success: false, error: data.error || 'Login failed' };
+    } catch {
+      return { success: false, error: 'Network error' };
+    }
+  }, []);
+
+  const adminSetup = useCallback(async (password: string) => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setup', password }),
+      });
+      const data = await res.json();
+      if (data.success && data.token) {
+        sessionStorage.setItem('admin-token', data.token);
+        setAuthToken(data.token);
+        setAuthState('authenticated');
+        return { success: true, token: data.token };
+      }
+      return { success: false, error: data.error || 'Setup failed' };
+    } catch {
+      return { success: false, error: 'Network error' };
+    }
+  }, []);
+
+  const adminLogout = useCallback(() => {
+    sessionStorage.removeItem('admin-token');
+    setAuthToken(null);
+    setAuthState('unauthenticated');
+  }, []);
+
   return (
-    <AdminSettingsContext.Provider value={{ settings, updateSettings, updateSettingsImmediate, resetSettings, getEffectClass, getAnimationClasses }}>
+    <AdminSettingsContext.Provider value={{
+      settings,
+      updateSettings,
+      updateSettingsImmediate,
+      resetSettings,
+      getEffectClass,
+      getAnimationClasses,
+      authState,
+      isAdmin: authState === 'authenticated',
+      adminLogin,
+      adminSetup,
+      adminLogout,
+    }}>
       {children}
     </AdminSettingsContext.Provider>
   );

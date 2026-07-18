@@ -1,77 +1,75 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { TerminalWindow } from "@/components/TerminalWindow";
 import { AnimatedSection } from "@/components/AnimatedSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, User, ArrowLeft } from "lucide-react";
+import { Lock, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import StarBorder from "@/components/StarBorder";
-
-const ADMIN_CREDENTIALS = {
-  username: "aryandw",
-  password: "Aryan@2010",
-};
-
-function hashCode(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString(36);
-}
-
-function verifyAuth(token: string): boolean {
-  try {
-    const decoded = atob(token);
-    const [user, pass, ts] = decoded.split('|');
-    const age = Date.now() - parseInt(ts, 10);
-    if (age > 8 * 60 * 60 * 1000) return false;
-    return (
-      hashCode(user) === hashCode(ADMIN_CREDENTIALS.username) &&
-      hashCode(pass) === hashCode(ADMIN_CREDENTIALS.password)
-    );
-  } catch {
-    return false;
-  }
-}
-
-function createAuthToken(username: string, password: string): string {
-  return btoa(`${username}|${password}|${Date.now()}`);
-}
-
-export function isAuthenticated(): boolean {
-  const token = sessionStorage.getItem("admin-token");
-  if (!token) return false;
-  return verifyAuth(token);
-}
+import { useAdminSettings } from "@/context/AdminSettings";
 
 const AdminLogin = () => {
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSetupMode, setIsSetupMode] = useState(false);
+  const [checkingSetup, setCheckingSetup] = useState(true);
   const navigate = useNavigate();
+  const { adminLogin, adminSetup, isAdmin } = useAdminSettings();
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (isAdmin) navigate("/admin/dashboard");
+  }, [isAdmin, navigate]);
+
+  useEffect(() => {
+    const checkSetup = async () => {
+      try {
+        const res = await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "login", password: "__check__" }),
+        });
+        const data = await res.json();
+        if (data.error === "No password set. Use setup first.") {
+          setIsSetupMode(true);
+        }
+      } catch {
+        // If API is unreachable, default to setup mode
+        setIsSetupMode(true);
+      }
+      setCheckingSetup(false);
+    };
+    checkSetup();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    setTimeout(() => {
-      if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-        const token = createAuthToken(username, password);
-        sessionStorage.setItem("admin-token", token);
-        navigate("/admin/dashboard");
-      } else {
-        setError("Invalid credentials. Access denied.");
-      }
-      setLoading(false);
-    }, 800);
+    await new Promise((r) => setTimeout(r, 500));
+
+    const result = isSetupMode
+      ? await adminSetup(password)
+      : await adminLogin(password);
+
+    if (result.success) {
+      navigate("/admin/dashboard");
+    } else {
+      setError(result.error || "Authentication failed.");
+    }
+    setLoading(false);
   };
+
+  if (checkingSetup) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white/40 font-mono text-sm">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 relative">
@@ -98,34 +96,22 @@ const AdminLogin = () => {
                   <div className="w-16 h-16 mx-auto rounded-full bg-white/[0.05] border border-white/10 flex items-center justify-center">
                     <Lock className="w-8 h-8 text-white/60" />
                   </div>
-                  <h1 className="text-2xl font-bold text-white font-code">Admin Access</h1>
-                  <p className="text-white/40 text-sm">Enter your credentials to access the dashboard</p>
+                  <h1 className="text-2xl font-bold text-white font-code">
+                    {isSetupMode ? "Setup Admin Password" : "Admin Access"}
+                  </h1>
+                  <p className="text-white/40 text-sm">
+                    {isSetupMode
+                      ? "Set a password to protect your admin dashboard. This password is stored securely on Vercel's server."
+                      : "Enter your password to access the dashboard"}
+                  </p>
                 </div>
               </AnimatedSection>
 
               <AnimatedSection delay={2}>
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="username" className="text-white/70 font-mono text-sm">
-                      Username
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                      <Input
-                        id="username"
-                        type="text"
-                        required
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="Enter username"
-                        className="bg-white/5 border-white/10 text-white pl-10 focus:border-white/30 focus:ring-2 focus:ring-white/10 font-mono"
-                      />
-                    </div>
-                  </div>
-
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-white/70 font-mono text-sm">
-                      Password
+                      {isSetupMode ? "Create Password" : "Password"}
                     </Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
@@ -133,12 +119,18 @@ const AdminLogin = () => {
                         id="password"
                         type="password"
                         required
+                        minLength={4}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter password"
+                        placeholder={isSetupMode ? "Choose a strong password" : "Enter password"}
                         className="bg-white/5 border-white/10 text-white pl-10 focus:border-white/30 focus:ring-2 focus:ring-white/10 font-mono"
                       />
                     </div>
+                    {isSetupMode && (
+                      <p className="text-white/20 text-xs font-mono">
+                        Minimum 4 characters. This password is stored on the server - you'll need it to edit from any device.
+                      </p>
+                    )}
                   </div>
 
                   {error && (
@@ -159,10 +151,12 @@ const AdminLogin = () => {
                     {loading ? (
                       <span className="flex items-center justify-center gap-2">
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Authenticating...
+                        {isSetupMode ? "Setting up..." : "Authenticating..."}
                       </span>
+                    ) : isSetupMode ? (
+                      "Create Password & Continue"
                     ) : (
-                      'Access Dashboard'
+                      "Access Dashboard"
                     )}
                   </StarBorder>
                 </form>
@@ -171,7 +165,9 @@ const AdminLogin = () => {
               <AnimatedSection delay={3}>
                 <div className="text-center">
                   <p className="text-white/20 text-xs font-mono">
-                    Protected area. Unauthorized access is prohibited.
+                    {isSetupMode
+                      ? "Settings are stored on Vercel's server and sync across all your devices."
+                      : "Settings are stored server-side. Changes sync across all your devices."}
                   </p>
                 </div>
               </AnimatedSection>

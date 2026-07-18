@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAdminSettings, AnimationName, VisualEffect, AdminSettings } from "@/context/AdminSettings";
-import { isAuthenticated } from "@/pages/AdminLogin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -78,13 +77,13 @@ const SectionCard = ({ title, icon: Icon, children }: {
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { settings, updateSettings, updateSettingsImmediate, resetSettings } = useAdminSettings();
+  const { settings, updateSettings, updateSettingsImmediate, resetSettings, isAdmin, adminLogout } = useAdminSettings();
   const [activeTab, setActiveTab] = useState("branding");
   const [saveMessage, setSaveMessage] = useState("");
 
   useEffect(() => {
-    if (!isAuthenticated()) navigate("/admin");
-  }, [navigate]);
+    if (!isAdmin) navigate("/admin");
+  }, [navigate, isAdmin]);
 
   const handleSave = () => {
     setSaveMessage("Settings saved locally! Only this device is affected.");
@@ -92,7 +91,7 @@ const AdminDashboard = () => {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem("admin-token");
+    adminLogout();
     navigate("/admin");
   };
 
