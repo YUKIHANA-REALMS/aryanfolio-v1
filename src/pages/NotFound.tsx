@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -24,11 +24,11 @@ const NotFound = () => {
           404
         </h1>
         <p className="text-xl text-white/50 mb-6">Oops! Page not found</p>
-        <a href="/">
+        <Link to="/">
           <Button variant="outline" className="premium-button">
             Return to Home
           </Button>
-        </a>
+        </Link>
       </div>
     </div>
   );

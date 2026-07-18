@@ -1,10 +1,12 @@
 import { TerminalWindow } from "./TerminalWindow";
 import { AnimatedSection } from "./AnimatedSection";
 import { Badge } from "./ui/badge";
-import { ExternalLink, Github, Clock, Star } from "lucide-react";
+import { ExternalLink, Github, Clock, Star, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
 import { useEffectClasses } from "./TerminalWindow";
 import { useAdminSettings } from "../context/AdminSettings";
+import { useGitHubRepos } from "../hooks/use-github";
+import { repoToProject } from "../lib/github";
 
 const statusIcons = {
   production: Star,
@@ -15,22 +17,45 @@ const statusIcons = {
 
 const statusColors = {
   production: "bg-white/10 text-white border-white/20",
-  development: "bg-white/5 text-white/60 border-white/10", 
+  development: "bg-white/5 text-white/60 border-white/10",
   archived: "bg-white/5 text-white/40 border-white/10",
   "coming soon": "bg-white/5 text-white/60 border-white/10"
 };
 
 export const Projects = () => {
   const { settings } = useAdminSettings();
-  const projects = settings.projects.map(p => ({
+  const { data: githubRepos, isLoading: reposLoading, refetch: refetchRepos } = useGitHubRepos();
+
+  const adminProjects = settings.projects.map(p => ({
     name: p.name,
     year: p.year,
     description: p.description,
     tags: p.tags,
     status: p.status,
     featured: p.featured,
-    links: { live: p.liveLink, github: p.githubLink }
+    links: { live: p.liveLink, github: p.githubLink },
+    _source: 'admin' as const,
   }));
+
+  const githubProjects = settings.showGithubRepos && githubRepos
+    ? githubRepos
+        .filter(repo => !settings.importedGithubIds.includes(repo.id))
+        .map(repo => {
+          const project = repoToProject(repo);
+          return {
+            name: project.name,
+            year: project.year,
+            description: project.description,
+            tags: project.tags,
+            status: project.status,
+            featured: project.featured,
+            links: { live: project.liveLink, github: project.githubLink },
+            _source: 'github' as const,
+          };
+        })
+    : [];
+
+  const allProjects = [...adminProjects, ...githubProjects];
   const { glassClass } = useEffectClasses();
 
   return (
@@ -48,17 +73,36 @@ export const Projects = () => {
                   <p className="text-white/50 text-lg">
                     A showcase of my best work and contributions
                   </p>
+                  {settings.showGithubRepos && (
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => refetchRepos()}
+                        disabled={reposLoading}
+                        className="text-white/40 hover:text-white/70 text-xs"
+                      >
+                        <RefreshCw className={`w-3 h-3 mr-1 ${reposLoading ? 'animate-spin' : ''}`} />
+                        {reposLoading ? 'Loading repos...' : 'Refresh GitHub repos'}
+                      </Button>
+                      {githubProjects.length > 0 && (
+                        <Badge variant="outline" className="text-xs border-white/10 text-white/40">
+                          +{githubProjects.length} from GitHub
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                 </div>
               </AnimatedSection>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
-                {projects.map((project, index) => {
-                  const StatusIcon = statusIcons[project.status as keyof typeof statusIcons];
-                  const statusColor = statusColors[project.status as keyof typeof statusColors];
+                {allProjects.map((project, index) => {
+                  const StatusIcon = statusIcons[project.status as keyof typeof statusIcons] || Clock;
+                  const statusColor = statusColors[project.status as keyof typeof statusColors] || statusColors.development;
 
                   return (
                     <AnimatedSection
-                      key={project.name}
+                      key={`${project._source}-${project.name}`}
                       animation="slide-in-up"
                       delay={1 + index * 0.2}
                     >
@@ -78,10 +122,15 @@ export const Projects = () => {
                                   Featured
                                 </Badge>
                               )}
+                              {project._source === 'github' && (
+                                <Badge className="bg-white/5 text-white/50 border-white/10 text-xs">
+                                  GitHub
+                                </Badge>
+                              )}
                             </div>
 
                             <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
-                              <Badge 
+                              <Badge
                                 className={`${statusColor} flex items-center space-x-1 border text-xs shrink-0`}
                               >
                                 <StatusIcon className="w-3 h-3" />
@@ -101,9 +150,9 @@ export const Projects = () => {
                           {/* Tags */}
                           <div className="flex flex-wrap gap-2 sm:gap-3 mb-6 sm:mb-8">
                             {project.tags.map((tag) => (
-                              <Badge 
+                              <Badge
                                 key={tag}
-                                variant="outline" 
+                                variant="outline"
                                 className="text-xs sm:text-sm border-white/10 hover:border-white/30 hover:bg-white/5 hover:text-white transition-all duration-300 cursor-default backdrop-blur-sm"
                               >
                                 {tag}
@@ -114,8 +163,8 @@ export const Projects = () => {
                           {/* Action Buttons */}
                           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-auto">
                             {project.links.live && (
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 size="default"
                                 className="premium-button group/btn relative overflow-hidden flex-1 text-sm"
                                 onClick={() => window.open(project.links.live, '_blank')}
@@ -125,8 +174,8 @@ export const Projects = () => {
                               </Button>
                             )}
                             {project.links.github && (
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 size="default"
                                 className="premium-button group/btn relative overflow-hidden flex-1 text-sm"
                                 onClick={() => window.open(project.links.github, '_blank')}

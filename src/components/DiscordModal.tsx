@@ -18,10 +18,22 @@ export const DiscordModal = ({ open, onClose }: DiscordModalProps) => {
   const { settings } = useAdminSettings();
   const [copied, setCopied] = useState(false);
 
-  const copyUsername = () => {
-    navigator.clipboard.writeText(settings.discordUsername);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyUsername = async () => {
+    try {
+      await navigator.clipboard.writeText(settings.discordUsername);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback: select text approach
+      const textarea = document.createElement('textarea');
+      textarea.value = settings.discordUsername;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (

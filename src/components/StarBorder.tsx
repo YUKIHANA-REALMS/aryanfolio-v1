@@ -1,14 +1,25 @@
 import './StarBorder.css';
+import { ElementType, ComponentPropsWithoutRef } from 'react';
 
-const StarBorder = ({
-  as: Component = 'button',
+interface StarBorderProps<T extends ElementType = 'button'> {
+  as?: T;
+  className?: string;
+  color?: string;
+  speed?: string;
+  thickness?: number;
+  children?: React.ReactNode;
+}
+
+const StarBorder = <T extends ElementType = 'button'>({
+  as,
   className = '',
   color = 'white',
   speed = '6s',
   thickness = 1,
   children,
   ...rest
-}) => {
+}: StarBorderProps<T> & Omit<ComponentPropsWithoutRef<T>, keyof StarBorderProps<T>>) => {
+  const Component = as || 'button';
   return (
     <Component
       className={`star-border-container ${className}`}

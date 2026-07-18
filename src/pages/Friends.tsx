@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users, Heart, Zap, Star, Crown, MessageCircle, Copy } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useAdminSettings } from "@/context/AdminSettings";
 
@@ -24,15 +24,19 @@ const Friends = () => {
   const networkTitle = settings.networkTitle || 'My Network';
   const networkDescription = settings.networkDescription || '';
 
+  const friendsJson = useMemo(() => JSON.stringify(friends), [friends]);
+
   // Fetch Discord avatars
   useEffect(() => {
+    const controller = new AbortController();
+    const parsedFriends = JSON.parse(friendsJson);
     const fetchAvatars = async () => {
       const newAvatars: Record<string, string> = {};
-      for (const friend of friends) {
+      for (const friend of parsedFriends) {
         const url = getDiscordAvatarUrl(friend.discordUserId);
         if (url) {
           try {
-            const res = await fetch(url);
+            const res = await fetch(url, { signal: controller.signal });
             if (res.ok) {
               const data = await res.json();
               if (data.data && data.data.discord_user && data.data.discord_user.avatar) {
@@ -51,10 +55,20 @@ const Friends = () => {
       }
     };
     fetchAvatars();
-  }, [friends]);
+    return () => controller.abort();
+  }, [friendsJson]);
 
-  const copyDiscordUsername = (username: string, displayName: string) => {
-    navigator.clipboard.writeText(username);
+  const copyDiscordUsername = async (username: string, displayName: string) => {
+    try {
+      await navigator.clipboard.writeText(username);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = username;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
     setCopiedUsername(displayName);
     toast({
       title: "Copied!",
@@ -86,8 +100,7 @@ const Friends = () => {
   const getAvatarSrc = (friend: typeof friends[0]) => {
     if (avatarUrls[friend.discord]) return avatarUrls[friend.discord];
     if (friend.discordUserId) {
-      const url = getDiscordAvatarUrl(friend.discordUserId);
-      return url || DEFAULT_AVATAR;
+      return DEFAULT_AVATAR;
     }
     return `https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.name}`;
   };

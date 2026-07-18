@@ -9,6 +9,46 @@ import { Lock, User, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import StarBorder from "@/components/StarBorder";
 
+const ADMIN_CREDENTIALS = {
+  username: "aryandw",
+  password: "Aryan@2010",
+};
+
+function hashCode(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash.toString(36);
+}
+
+function verifyAuth(token: string): boolean {
+  try {
+    const decoded = atob(token);
+    const [user, pass, ts] = decoded.split('|');
+    const age = Date.now() - parseInt(ts, 10);
+    if (age > 8 * 60 * 60 * 1000) return false;
+    return (
+      hashCode(user) === hashCode(ADMIN_CREDENTIALS.username) &&
+      hashCode(pass) === hashCode(ADMIN_CREDENTIALS.password)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function createAuthToken(username: string, password: string): string {
+  return btoa(`${username}|${password}|${Date.now()}`);
+}
+
+export function isAuthenticated(): boolean {
+  const token = sessionStorage.getItem("admin-token");
+  if (!token) return false;
+  return verifyAuth(token);
+}
+
 const AdminLogin = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -22,8 +62,9 @@ const AdminLogin = () => {
     setError("");
 
     setTimeout(() => {
-      if (username === "aryandw" && password === "Aryan@2010") {
-        sessionStorage.setItem("admin-auth", "true");
+      if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+        const token = createAuthToken(username, password);
+        sessionStorage.setItem("admin-token", token);
         navigate("/admin/dashboard");
       } else {
         setError("Invalid credentials. Access denied.");

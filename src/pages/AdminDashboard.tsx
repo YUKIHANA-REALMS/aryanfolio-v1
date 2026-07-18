@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAdminSettings, AnimationName, VisualEffect } from "@/context/AdminSettings";
+import { useAdminSettings, AnimationName, VisualEffect, AdminSettings } from "@/context/AdminSettings";
+import { isAuthenticated } from "@/pages/AdminLogin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,11 +15,13 @@ import {
   ArrowLeft, Settings, Palette, Type, Link2, Sparkles, Image,
   Layout, Save, RotateCcw, LogOut, Plus, Trash2, Eye, Layers,
   Zap, MousePointer, Monitor, Globe, FileText, Star, Box,
-  GripVertical, ChevronDown, ChevronUp, Users
+  GripVertical, ChevronDown, ChevronUp, Users, Github, Download, Check, ExternalLink, RefreshCw
 } from "lucide-react";
 import StarBorder from "@/components/StarBorder";
 import { animations, AnimationKey } from "@/lib/animations";
 import { visualEffects, EffectType } from "@/lib/effects";
+import { useGitHubRepos } from "@/hooks/use-github";
+import { repoToProject, GitHubRepo } from "@/lib/github";
 
 const InputField = ({ label, value, onChange, placeholder, type = "text" }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
@@ -80,17 +83,16 @@ const AdminDashboard = () => {
   const [saveMessage, setSaveMessage] = useState("");
 
   useEffect(() => {
-    const auth = sessionStorage.getItem("admin-auth");
-    if (!auth) navigate("/admin");
+    if (!isAuthenticated()) navigate("/admin");
   }, [navigate]);
 
   const handleSave = () => {
-    setSaveMessage("Settings saved successfully!");
+    setSaveMessage("Settings saved locally! Only this device is affected.");
     setTimeout(() => setSaveMessage(""), 3000);
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem("admin-auth");
+    sessionStorage.removeItem("admin-token");
     navigate("/admin");
   };
 
@@ -250,6 +252,180 @@ const AdminDashboard = () => {
     );
   };
 
+  const GitHubReposSection = ({ settings, updateSettingsImmediate }: { settings: AdminSettings; updateSettingsImmediate: (updates: Partial<AdminSettings>) => void }) => {
+    const { data: repos, isLoading, error, refetch } = useGitHubRepos();
+    const [importedIds, setImportedIds] = useState<number[]>(settings.importedGithubIds || []);
+
+    const handleImport = (repo: GitHubRepo) => {
+      const project = repoToProject(repo);
+      const newProjects = [...settings.projects, {
+        name: project.name,
+        year: project.year,
+        description: project.description,
+        tags: project.tags,
+        status: project.status,
+        featured: project.featured,
+        liveLink: project.liveLink,
+        githubLink: project.githubLink,
+        logoUrl: project.logoUrl,
+      }];
+      const newImportedIds = [...importedIds, repo.id];
+      setImportedIds(newImportedIds);
+      updateSettingsImmediate({ projects: newProjects, importedGithubIds: newImportedIds });
+    };
+
+    const handleImportAll = () => {
+      if (!repos) return;
+      const newProjects = [...settings.projects];
+      const newImportedIds = [...importedIds];
+      repos
+        .filter(repo => !importedIds.includes(repo.id))
+        .forEach(repo => {
+          const project = repoToProject(repo);
+          newProjects.push({
+            name: project.name,
+            year: project.year,
+            description: project.description,
+            tags: project.tags,
+            status: project.status,
+            featured: project.featured,
+            liveLink: project.liveLink,
+            githubLink: project.githubLink,
+            logoUrl: project.logoUrl,
+          });
+          newImportedIds.push(repo.id);
+        });
+      setImportedIds(newImportedIds);
+      updateSettingsImmediate({ projects: newProjects, importedGithubIds: newImportedIds });
+    };
+
+    const handleRemove = (repoId: number) => {
+      const newImportedIds = importedIds.filter(id => id !== repoId);
+      setImportedIds(newImportedIds);
+      updateSettingsImmediate({ importedGithubIds: newImportedIds });
+    };
+
+    return (
+      <div className="space-y-4">
+        <SectionCard title="GitHub Repositories" icon={Github}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-white/40 text-sm">
+                Fetch and import repositories from <span className="text-white/60">YUKIHANA-REALMS</span>
+              </p>
+              <p className="text-white/30 text-xs mt-1">
+                Changes are saved locally to this device only. Other devices won't be affected.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading} className="premium-button">
+                <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
+              </Button>
+              {repos && repos.filter(r => !importedIds.includes(r.id)).length > 0 && (
+                <Button variant="outline" size="sm" onClick={handleImportAll} className="premium-button">
+                  <Download className="w-3 h-3 mr-1" /> Import All ({repos.filter(r => !importedIds.includes(r.id)).length})
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 mb-3">
+              <Switch
+                checked={settings.showGithubRepos}
+                onCheckedChange={(v) => updateSettingsImmediate({ showGithubRepos: v })}
+              />
+              <Label className="text-white/70 text-sm">Show GitHub repos on portfolio page</Label>
+            </div>
+
+            {isLoading && (
+              <div className="text-center py-8 text-white/40">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
+                <p className="text-sm">Fetching repositories...</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="text-center py-8 text-white/40">
+                <p className="text-sm text-red-400">Failed to fetch repos. Check your internet connection.</p>
+                <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-2 premium-button">
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            {repos && repos.map(repo => {
+              const isImported = importedIds.includes(repo.id);
+              return (
+                <Card key={repo.id} className={`bg-white/[0.02] border-white/5 p-4 ${isImported ? 'opacity-50' : ''}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-white/90 font-medium text-sm">{repo.name}</span>
+                        {repo.language && (
+                          <Badge className="bg-white/10 text-white/60 text-xs">{repo.language}</Badge>
+                        )}
+                        {isImported && (
+                          <Badge className="bg-green-500/20 text-green-400 text-xs flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Imported
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-white/40 text-xs mb-2 line-clamp-2">
+                        {repo.description || 'No description'}
+                      </p>
+                      <div className="flex items-center gap-3 text-xs text-white/30">
+                        <span>★ {repo.stargazers_count}</span>
+                        <span>Forks: {repo.forks_count}</span>
+                        <span>{new Date(repo.pushed_at).toLocaleDateString()}</span>
+                        {repo.topics && repo.topics.length > 0 && (
+                          <div className="flex gap-1">
+                            {repo.topics.slice(0, 3).map(topic => (
+                              <Badge key={topic} variant="outline" className="text-xs border-white/10 text-white/30">{topic}</Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(repo.html_url, '_blank')}
+                        className="premium-button"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </Button>
+                      {isImported ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRemove(repo.id)}
+                          className="premium-button"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleImport(repo)}
+                          className="premium-button"
+                        >
+                          <Download className="w-3 h-3 mr-1" /> Import
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </SectionCard>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
@@ -296,6 +472,7 @@ const AdminDashboard = () => {
               { value: "animations", icon: Sparkles, label: "Animations" },
               { value: "effects", icon: Layers, label: "Effects" },
               { value: "network", icon: Users, label: "Network" },
+              { value: "github", icon: Github, label: "GitHub" },
               { value: "theme", icon: Palette, label: "Theme" },
               { value: "layout", icon: Layout, label: "Layout" },
             ].map(({ value, icon: Icon, label }) => (
@@ -781,6 +958,11 @@ const AdminDashboard = () => {
                 ))}
               </div>
             </SectionCard>
+          </TabsContent>
+
+          {/* ═══ GITHUB ═══ */}
+          <TabsContent value="github" className="space-y-4">
+            <GitHubReposSection settings={settings} updateSettingsImmediate={updateSettingsImmediate} />
           </TabsContent>
 
           {/* ═══ THEME ═══ */}

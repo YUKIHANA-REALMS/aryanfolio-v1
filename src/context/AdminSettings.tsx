@@ -31,6 +31,8 @@ export interface AdminSettings {
   buttons: { label: string; link: string; type: 'primary' | 'secondary' | 'ghost' }[];
   skills: { name: string; category: string; level: number }[];
   projects: { name: string; year: string; description: string; tags: string[]; status: string; featured: boolean; liveLink: string; githubLink: string; logoUrl: string }[];
+  importedGithubIds: number[];
+  showGithubRepos: boolean;
   networkTitle: string;
   networkDescription: string;
   friends: { name: string; title: string; category: string; skills: string[]; status: string; discord: string; discordUserId: string }[];
@@ -101,6 +103,8 @@ const defaultSettings: AdminSettings = {
     { name: 'InfraProvisioner', year: '2025', description: 'Automated infrastructure provisioning.', tags: ['Go', 'Terraform', 'AWS'], status: 'coming soon', featured: false, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS', logoUrl: '' },
     { name: 'ContainerForge', year: '2025', description: 'Container optimization platform.', tags: ['Python', 'Docker', 'Trivy'], status: 'coming soon', featured: false, liveLink: '', githubLink: 'https://github.com/YUKIHANA-REALMS', logoUrl: '' }
   ],
+  importedGithubIds: [],
+  showGithubRepos: true,
   networkTitle: 'My Network',
   networkDescription: 'Welcome to my professional network! These are the incredible individuals I\'ve had the privilege to work, collaborate, and build friendships with. From talented developers and designers to innovative entrepreneurs and creative minds - each person here has contributed something valuable to my journey in tech.',
   friends: [
@@ -162,7 +166,7 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
       const saved = localStorage.getItem('admin-settings');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return { ...defaultSettings, ...parsed, projects: (parsed.projects || defaultSettings.projects).map((p: any) => ({ ...{ logoUrl: '', liveLink: '', githubLink: '' }, ...p })) };
+        return { ...defaultSettings, ...parsed, projects: (parsed.projects || defaultSettings.projects).map((p: Record<string, unknown>) => ({ ...{ logoUrl: '', liveLink: '', githubLink: '', importedGithubIds: [] as number[] }, ...p })) };
       }
       return defaultSettings;
     } catch {
@@ -254,23 +258,23 @@ export const AdminSettingsProvider = ({ children }: { children: ReactNode }) => 
     localStorage.setItem('admin-settings', JSON.stringify(settings));
   }, [settings]);
 
-  const resetSettings = () => {
+  const resetSettings = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     pendingRef.current = null;
     setSettings(defaultSettings);
     localStorage.removeItem('admin-settings');
-  };
+  }, []);
 
-  const getEffectClass = (): string => {
+  const getEffectClass = useCallback((): string => {
     return visualEffects[settings.visualEffect]?.class || '';
-  };
+  }, [settings.visualEffect]);
 
-  const getAnimationClasses = (): string => {
+  const getAnimationClasses = useCallback((): string => {
     return settings.enabledAnimations
       .map(key => animations[key]?.class)
       .filter(Boolean)
       .join(' ');
-  };
+  }, [settings.enabledAnimations]);
 
   return (
     <AdminSettingsContext.Provider value={{ settings, updateSettings, updateSettingsImmediate, resetSettings, getEffectClass, getAnimationClasses }}>

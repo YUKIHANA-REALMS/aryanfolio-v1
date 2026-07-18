@@ -9,12 +9,12 @@ interface Particle {
   opacity: number;
 }
 
+const CHARS = ['0', '1', '01', '10', '11', '00', '1010', '0101'];
+
 export const ParticleField = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<Particle[]>([]);
   const animationId = useRef<number>();
-
-  const chars = ['0', '1', '01', '10', '11', '00', '1010', '0101'];
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -38,10 +38,15 @@ export const ParticleField = () => {
           y: Math.random() * canvas.height,
           vx: (Math.random() - 0.5) * 0.4,
           vy: Math.random() * 0.4 + 0.1,
-          char: chars[Math.floor(Math.random() * chars.length)],
+          char: CHARS[Math.floor(Math.random() * CHARS.length)],
           opacity: Math.random() * 0.2 + 0.05
         });
       }
+    };
+
+    const handleResize = () => {
+      resizeCanvas();
+      createParticles();
     };
 
     const animate = () => {
@@ -71,16 +76,13 @@ export const ParticleField = () => {
     createParticles();
     animate();
 
-    window.addEventListener('resize', () => {
-      resizeCanvas();
-      createParticles();
-    });
+    window.addEventListener('resize', handleResize);
 
     return () => {
       if (animationId.current) {
         cancelAnimationFrame(animationId.current);
       }
-      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
 

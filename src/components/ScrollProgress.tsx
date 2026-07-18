@@ -11,7 +11,7 @@ export const ScrollProgress = () => {
       setScrollProgress(progress);
     };
 
-    window.addEventListener('scroll', updateScrollProgress);
+    window.addEventListener('scroll', updateScrollProgress, { passive: true });
     updateScrollProgress();
 
     return () => window.removeEventListener('scroll', updateScrollProgress);

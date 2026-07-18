@@ -15,6 +15,7 @@ export const Hero = () => {
 
   const personal = { name: settings.heroTitle || settings.siteName, title: "Full-Stack Developer & Cloud DevOps Engineer", tagline: settings.heroTagline, email: settings.email };
   const social = { github: settings.githubUrl };
+  const avatarSrc = settings.logo || pixelAvatar;
 
   useEffect(() => {
     let i = 0;
@@ -71,10 +72,10 @@ export const Hero = () => {
                 {/* Avatar container */}
                 <div className="relative">
                   <img 
-                    src={pixelAvatar} 
+                    src={avatarSrc} 
                     alt={`${personal.name}'s avatar`} 
                     data-admin-logo
-                    className="relative w-28 h-28 rounded-full border-2 border-white/20 group-hover:border-white/40 transition-all duration-700 transform group-hover:scale-105 pixel-art shadow-2xl shadow-white/10"
+                    className="relative w-28 h-28 rounded-full border-2 border-white/20 group-hover:border-white/40 transition-all duration-700 transform group-hover:scale-105 shadow-2xl shadow-white/10 object-cover"
                   />
                   
                   {/* Inner highlight */}
