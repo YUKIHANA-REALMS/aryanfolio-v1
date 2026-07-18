@@ -28,25 +28,24 @@ export interface GitHubProfile {
   following: number;
 }
 
-const GITHUB_USERNAME = 'YUKIHANA-REALMS';
 const GITHUB_API_BASE = 'https://api.github.com';
 
-export async function fetchGitHubProfile(): Promise<GitHubProfile> {
-  const response = await fetch(`${GITHUB_API_BASE}/users/${GITHUB_USERNAME}`);
+export async function fetchGitHubProfile(username: string): Promise<GitHubProfile> {
+  const response = await fetch(`${GITHUB_API_BASE}/users/${username}`);
   if (!response.ok) {
     throw new Error(`GitHub API error: ${response.status}`);
   }
   return response.json();
 }
 
-export async function fetchGitHubRepos(): Promise<GitHubRepo[]> {
+export async function fetchGitHubRepos(username: string): Promise<GitHubRepo[]> {
   const repos: GitHubRepo[] = [];
   let page = 1;
   const perPage = 100;
 
   while (true) {
     const response = await fetch(
-      `${GITHUB_API_BASE}/users/${GITHUB_USERNAME}/repos?sort=pushed&direction=desc&per_page=${perPage}&page=${page}`
+      `${GITHUB_API_BASE}/users/${username}/repos?sort=pushed&direction=desc&per_page=${perPage}&page=${page}`
     );
     if (!response.ok) {
       throw new Error(`GitHub API error: ${response.status}`);

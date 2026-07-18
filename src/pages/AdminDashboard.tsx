@@ -253,7 +253,7 @@ const AdminDashboard = () => {
   };
 
   const GitHubReposSection = ({ settings, updateSettingsImmediate }: { settings: AdminSettings; updateSettingsImmediate: (updates: Partial<AdminSettings>) => void }) => {
-    const { data: repos, isLoading, error, refetch } = useGitHubRepos();
+    const { data: repos, isLoading, error, refetch } = useGitHubRepos(settings.githubFetchUsername);
     const [importedIds, setImportedIds] = useState<number[]>(settings.importedGithubIds || []);
 
     const handleImport = (repo: GitHubRepo) => {
@@ -307,11 +307,33 @@ const AdminDashboard = () => {
 
     return (
       <div className="space-y-4">
+        <SectionCard title="GitHub Profile" icon={Github}>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-white/70 text-sm">GitHub Username</Label>
+              <p className="text-white/30 text-xs">Enter the GitHub username to fetch repositories from</p>
+              <Input
+                value={settings.githubFetchUsername}
+                onChange={(e) => updateSettingsImmediate({ githubFetchUsername: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+                placeholder="e.g. YUKIHANA-REALMS"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={settings.showGithubRepos}
+                onCheckedChange={(v) => updateSettingsImmediate({ showGithubRepos: v })}
+              />
+              <Label className="text-white/70 text-sm">Show GitHub repos on portfolio page</Label>
+            </div>
+          </div>
+        </SectionCard>
+
         <SectionCard title="GitHub Repositories" icon={Github}>
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-white/40 text-sm">
-                Fetch and import repositories from <span className="text-white/60">YUKIHANA-REALMS</span>
+                Repositories from <span className="text-white/60">{settings.githubFetchUsername || 'No username set'}</span>
               </p>
               <p className="text-white/30 text-xs mt-1">
                 Changes are saved locally to this device only. Other devices won't be affected.
@@ -330,14 +352,6 @@ const AdminDashboard = () => {
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center gap-2 mb-3">
-              <Switch
-                checked={settings.showGithubRepos}
-                onCheckedChange={(v) => updateSettingsImmediate({ showGithubRepos: v })}
-              />
-              <Label className="text-white/70 text-sm">Show GitHub repos on portfolio page</Label>
-            </div>
-
             {isLoading && (
               <div className="text-center py-8 text-white/40">
                 <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />

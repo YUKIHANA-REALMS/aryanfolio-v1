@@ -33,6 +33,7 @@ export interface AdminSettings {
   projects: { name: string; year: string; description: string; tags: string[]; status: string; featured: boolean; liveLink: string; githubLink: string; logoUrl: string }[];
   importedGithubIds: number[];
   showGithubRepos: boolean;
+  githubFetchUsername: string;
   networkTitle: string;
   networkDescription: string;
   friends: { name: string; title: string; category: string; skills: string[]; status: string; discord: string; discordUserId: string }[];
@@ -105,6 +106,7 @@ const defaultSettings: AdminSettings = {
   ],
   importedGithubIds: [],
   showGithubRepos: true,
+  githubFetchUsername: 'YUKIHANA-REALMS',
   networkTitle: 'My Network',
   networkDescription: 'Welcome to my professional network! These are the incredible individuals I\'ve had the privilege to work, collaborate, and build friendships with. From talented developers and designers to innovative entrepreneurs and creative minds - each person here has contributed something valuable to my journey in tech.',
   friends: [

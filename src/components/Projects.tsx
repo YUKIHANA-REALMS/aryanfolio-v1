@@ -24,7 +24,7 @@ const statusColors = {
 
 export const Projects = () => {
   const { settings } = useAdminSettings();
-  const { data: githubRepos, isLoading: reposLoading, refetch: refetchRepos } = useGitHubRepos();
+  const { data: githubRepos, isLoading: reposLoading, refetch: refetchRepos } = useGitHubRepos(settings.githubFetchUsername);
 
   const adminProjects = settings.projects.map(p => ({
     name: p.name,
